@@ -1,0 +1,102 @@
+# Created by eris-code
+
+### Operating System Files ###
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+### IDE & Editor Files ###
+.idea/
+.vscode/
+*.swp
+*~
+*.bak
+*.tmp
+
+# Vim & Neovim
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+[._]s[a-v][a-z]
+[._]sw[a-p]
+
+### Go ###
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+_obj/
+_test/
+bin/
+pkg/
+go.sum
+vendor/
+
+### Python ###
+__pycache__/
+*.py[cod]
+*$py.class
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+.ipynb_checkpoints
+.python-version
+# Poetry
+.venv/
+poetry.lock
+
+### Node.js ###
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-lock.yaml
+package-lock.json
+# Astro
+.astro/
+dist/
+# Next.js
+.next/
+out/
+
+### Rust ###
+/target/
+Cargo.lock
+
+### C, C++, C# ###
+*.o
+*.obj
+*.out
+*.ncb
+*.suo
+*.user
+*.ilk
+*.pdb
+*.pch
+[Bb]in/
+[Dd]ebug/
+[Rr]elease/
+
+### Zig ###
+zig-cache/
+zig-out/
+
+### Lua ###
+# (Usually no standard build artifacts to ignore)
+
+### Project Specific ###
+.eris-code/
+prompt.txt

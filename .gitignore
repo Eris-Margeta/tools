@@ -1,0 +1,47 @@
+# Node.js
+node_modules/
+dist/
+build/
+*.log
+.npm/
+.eslintcache
+.stylelintcache
+
+# pnpm
+.pnpm-store/
+.pnpm-debug.log*
+
+# OS specific
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+desktop.ini
+
+# IDEs and Editors
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.env
+.env.local
+.env.*.local
+
+# Shell and system
+*.bak
+*.tmp
+*.temp
+tmp/
+*~
+.history
+.bash_history
+.zsh_history
+
+# Local config
+config.local.json
+credentials.json
+.vaulter/ # Potential local data for vaulter.sh
