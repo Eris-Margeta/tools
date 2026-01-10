@@ -1,4 +1,4 @@
-# AMAZING MAC CLEANER ilitiga fantastični Mac čistač [DEPRECATED]
+# AMAZING MAC CLEANER ilitiga fantastični Mac čistač 
 
 Sveobuhvatna skripta za čišćenje, održavanje i konfiguraciju macOS-a.
 
