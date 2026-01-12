@@ -1,0 +1,13 @@
+#!/bin/bash
+
+sudo defaults write NSGlobalDomain NSAutomaticSpellingCorrectionEnabled -bool false
+sudo defaults write NSGlobalDomain NSAutomaticTextCompletionEnabled -bool false
+sudo defaults write -g NSAutomaticQuoteSubstitutionEnabled -bool false
+sudo defaults write -g NSAutomaticDashSubstitutionEnabled -bool false
+defaults write com.apple.brave WebAutomaticSpellingCorrectionEnabled -bool false
+defaults write com.apple.Safari WebAutomaticSpellingCorrectionEnabled -bool false
+defaults write net.kovidgoyal.kitty WebAutomaticSpellingCorrectionEnabled -bool false
+defaults write com.googlecode.iterm2 WebAutomaticSpellingCorrectionEnabled -bool false
+defaults write net.whatsapp.WhatsApp WebAutomaticSpellingCorrectionEnabled -bool false
+defaults write com.microsoft.VSCode WebAutomaticSpellingCorrectionEnabled -bool false
+defaults write dev.zed.Zed WebAutomaticSpellingCorrectionEnabled -bool false
