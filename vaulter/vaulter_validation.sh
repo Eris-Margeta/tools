@@ -266,13 +266,11 @@ run_security_tests() {
 run_all_tests() {
     local start_time=$(date +%s)
     local start_datetime=$(date "+%Y-%m-%d %H:%M:%S")
+    local report_file="$SCRIPT_DIR/validation_report.md"
 
     local unit_result=0
     local integration_result=0
     local security_result=0
-    local unit_passed=0 unit_failed=0
-    local integration_passed=0 integration_failed=0
-    local security_passed=0 security_failed=0
 
     # Run unit tests and capture results
     (
@@ -301,69 +299,7 @@ run_all_tests() {
     local minutes=$((duration / 60))
     local seconds=$((duration % 60))
 
-    # Get system info
-    local os_name=$(uname -s)
-    local os_version=$(uname -r)
-    local hostname=$(hostname -s 2>/dev/null || hostname)
-    local shell_version=$BASH_VERSION
-
-    # Print final report
-    echo
-    echo
-    echo -e "${BOLD}${CYAN}╔═════════════════════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${BOLD}${CYAN}║                                                                             ║${NC}"
-    echo -e "${BOLD}${CYAN}║                    VAULTER V2 - TEST REPORT                                 ║${NC}"
-    echo -e "${BOLD}${CYAN}║                                                                             ║${NC}"
-    echo -e "${BOLD}${CYAN}╚═════════════════════════════════════════════════════════════════════════════╝${NC}"
-    echo
-    echo -e "${BOLD}┌─────────────────────────────────────────────────────────────────────────────────┐${NC}"
-    echo -e "${BOLD}│ REPORT METADATA                                                                 │${NC}"
-    echo -e "${BOLD}├─────────────────────────────────────────────────────────────────────────────────┤${NC}"
-    printf "│  %-20s %-56s │\n" "Date:" "$start_datetime"
-    printf "│  %-20s %-56s │\n" "Vaulter Version:" "$VERSION"
-    printf "│  %-20s %-56s │\n" "System:" "$os_name $os_version"
-    printf "│  %-20s %-56s │\n" "Hostname:" "$hostname"
-    printf "│  %-20s %-56s │\n" "Shell:" "bash $shell_version"
-    echo -e "${BOLD}└─────────────────────────────────────────────────────────────────────────────────┘${NC}"
-    echo
-    echo -e "${BOLD}┌─────────────────────────────────────────────────────────────────────────────────┐${NC}"
-    echo -e "${BOLD}│ TEST RESULTS                                                                    │${NC}"
-    echo -e "${BOLD}├─────────────────────────────────────────────────────────────────────────────────┤${NC}"
-    echo -e "${BOLD}│                                                                                 │${NC}"
-
-    # Unit Tests
-    if [ $unit_result -eq 0 ]; then
-        echo -e "│  ${GREEN}✓${NC} ${BOLD}Unit Tests${NC}                                                                  │"
-        echo -e "│    └── Status: ${GREEN}PASSED${NC}  (29 tests)                                              │"
-    else
-        echo -e "│  ${RED}✗${NC} ${BOLD}Unit Tests${NC}                                                                  │"
-        echo -e "│    └── Status: ${RED}FAILED${NC}                                                           │"
-    fi
-    echo "│                                                                                 │"
-
-    # Integration Tests
-    if [ $integration_result -eq 0 ]; then
-        echo -e "│  ${GREEN}✓${NC} ${BOLD}Integration Tests${NC}                                                           │"
-        echo -e "│    └── Status: ${GREEN}PASSED${NC}  (23 tests)                                              │"
-    else
-        echo -e "│  ${RED}✗${NC} ${BOLD}Integration Tests${NC}                                                           │"
-        echo -e "│    └── Status: ${RED}FAILED${NC}                                                           │"
-    fi
-    echo "│                                                                                 │"
-
-    # Security Tests
-    if [ $security_result -eq 0 ]; then
-        echo -e "│  ${GREEN}✓${NC} ${BOLD}Security Tests${NC}                                                              │"
-        echo -e "│    └── Status: ${GREEN}PASSED${NC}  (19 tests)                                              │"
-    else
-        echo -e "│  ${RED}✗${NC} ${BOLD}Security Tests${NC}                                                              │"
-        echo -e "│    └── Status: ${RED}FAILED${NC}                                                           │"
-    fi
-    echo "│                                                                                 │"
-    echo -e "${BOLD}├─────────────────────────────────────────────────────────────────────────────────┤${NC}"
-    echo -e "${BOLD}│ SUMMARY                                                                         │${NC}"
-    echo -e "${BOLD}├─────────────────────────────────────────────────────────────────────────────────┤${NC}"
-
+    # Calculate totals
     local total_tests=71
     local total_passed=0
     local total_failed=0
@@ -372,33 +308,85 @@ run_all_tests() {
     [ $integration_result -eq 0 ] && total_passed=$((total_passed + 23)) || total_failed=$((total_failed + 23))
     [ $security_result -eq 0 ] && total_passed=$((total_passed + 19)) || total_failed=$((total_failed + 19))
 
-    printf "│  %-20s %-56s │\n" "Total Tests:" "$total_tests"
-    echo -e "│  Passed:              ${GREEN}${total_passed}${NC}                                                        │"
-    echo -e "│  Failed:              ${RED}${total_failed}${NC}                                                         │"
-    printf "│  %-20s %-56s │\n" "Duration:" "${minutes}m ${seconds}s"
-    printf "│  %-20s %-56s │\n" "Completed:" "$end_datetime"
-    echo -e "${BOLD}└─────────────────────────────────────────────────────────────────────────────────┘${NC}"
+    # Determine overall status
+    local overall_status="PASSED"
+    [ $total_failed -gt 0 ] && overall_status="FAILED"
+
+    # Generate markdown report
+    cat > "$report_file" << EOF
+# Vaulter V2 - Validation Report
+
+## Summary
+
+| Metric | Value |
+|--------|-------|
+| **Status** | **${overall_status}** |
+| **Date** | ${start_datetime} |
+| **Duration** | ${minutes}m ${seconds}s |
+| **Total Tests** | ${total_tests} |
+| **Passed** | ${total_passed} |
+| **Failed** | ${total_failed} |
+
+## Test Results
+
+| Test Suite | Tests | Status |
+|------------|-------|--------|
+| Unit Tests | 29 | $([ $unit_result -eq 0 ] && echo "PASSED" || echo "FAILED") |
+| Integration Tests | 23 | $([ $integration_result -eq 0 ] && echo "PASSED" || echo "FAILED") |
+| Security Tests | 19 | $([ $security_result -eq 0 ] && echo "PASSED" || echo "FAILED") |
+
+## Test Coverage
+
+### Unit Tests (29)
+- Compression: archive creation, location, structure preservation
+- Encryption: AES-256-CBC, PBKDF2, salt randomness
+- Decryption: restoration, wrong password handling, corruption detection
+- Decompression: folder restoration, permission preservation
+- Git LFS: .gitattributes, .gitignore configuration
+- Roundtrip: full encrypt/decrypt cycles with integrity verification
+
+### Integration Tests (23)
+- Vault workflow: directory creation, encryption, git initialization
+- De-vault workflow: decryption, restoration, cleanup
+- Full cycle: local operations, large data, nested structures
+- Edge cases: spaces in names, special characters, symlinks
+
+### Security Tests (19)
+- Encryption security: PBKDF2 iterations, AES-256, random salt
+- Data handling: no sensitive files in git, proper cleanup
+- Cryptographic integrity: tamper detection, truncation detection
+- Password security: empty password rejection, long passwords
+
+## Environment
+
+| Property | Value |
+|----------|-------|
+| Vaulter Version | ${VERSION} |
+| System | $(uname -s) $(uname -r) |
+| Hostname | $(hostname -s 2>/dev/null || hostname) |
+| Shell | bash ${BASH_VERSION} |
+
+---
+*Report generated: ${end_datetime}*
+EOF
+
+    # Print summary to terminal
+    echo
+    echo -e "${BOLD}════════════════════════════════════════════════════════════════${NC}"
+    echo -e "${BOLD}                    VALIDATION COMPLETE                          ${NC}"
+    echo -e "${BOLD}════════════════════════════════════════════════════════════════${NC}"
+    echo
+    echo "  Total: ${total_tests} | Passed: ${total_passed} | Failed: ${total_failed}"
+    echo "  Duration: ${minutes}m ${seconds}s"
+    echo
+    echo -e "  Report saved to: ${CYAN}${report_file}${NC}"
     echo
 
-    if [ $unit_result -eq 0 ] && [ $integration_result -eq 0 ] && [ $security_result -eq 0 ]; then
-        echo -e "${GREEN}${BOLD}╔═════════════════════════════════════════════════════════════════════════════╗${NC}"
-        echo -e "${GREEN}${BOLD}║                                                                             ║${NC}"
-        echo -e "${GREEN}${BOLD}║                         ✓ ALL 71 TESTS PASSED                               ║${NC}"
-        echo -e "${GREEN}${BOLD}║                                                                             ║${NC}"
-        echo -e "${GREEN}${BOLD}║                    Vaulter V2 is ready for use.                             ║${NC}"
-        echo -e "${GREEN}${BOLD}║                                                                             ║${NC}"
-        echo -e "${GREEN}${BOLD}╚═════════════════════════════════════════════════════════════════════════════╝${NC}"
-        echo
+    if [ $total_failed -eq 0 ]; then
+        echo -e "  ${GREEN}${BOLD}All tests passed.${NC}"
         return 0
     else
-        echo -e "${RED}${BOLD}╔═════════════════════════════════════════════════════════════════════════════╗${NC}"
-        echo -e "${RED}${BOLD}║                                                                             ║${NC}"
-        echo -e "${RED}${BOLD}║                         ✗ SOME TESTS FAILED                                 ║${NC}"
-        echo -e "${RED}${BOLD}║                                                                             ║${NC}"
-        echo -e "${RED}${BOLD}║              Please review the output above for details.                    ║${NC}"
-        echo -e "${RED}${BOLD}║                                                                             ║${NC}"
-        echo -e "${RED}${BOLD}╚═════════════════════════════════════════════════════════════════════════════╝${NC}"
-        echo
+        echo -e "  ${RED}${BOLD}Some tests failed. Check report for details.${NC}"
         return 1
     fi
 }
