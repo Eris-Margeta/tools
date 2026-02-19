@@ -13,7 +13,8 @@
 GO_VERSION="1.25.4"
 NVM_VERSION="0.39.7"
 # TMUX_VERSION is no longer needed as we install from apt.
-NEOVIM_URL="https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz"
+# Neovim URL is set dynamically based on architecture in install_neovim()
+STARSHIP_TOML_URL="https://raw.githubusercontent.com/Eris-Margeta/configs/main/starship/server.starship.toml"
 
 # SCRIPT BEHAVIOR
 ENABLE_LOGGING=true # Set to false to disable logging to a file.
@@ -157,9 +158,14 @@ install_starship() {
   su - "$ACTUAL_USER" -c "curl -sS https://starship.rs/install.sh | sh -s -- -y"
   echo -e '\neval "$(starship init zsh)"' >>"$ACTUAL_HOME/.zshrc"
   mkdir -p "$ACTUAL_HOME/.config"
-  cat >"$ACTUAL_HOME/.config/starship.toml" <<'EOL'
+  log_info "--> Downloading Starship config from $STARSHIP_TOML_URL..."
+  if curl -fsSL "$STARSHIP_TOML_URL" -o "$ACTUAL_HOME/.config/starship.toml" 2>/dev/null; then
+    log_success "Starship config downloaded from GitHub."
+  else
+    log_info "--> Remote config not available, using built-in default config."
+    cat >"$ACTUAL_HOME/.config/starship.toml" <<'EOL'
 # ~/.config/starship.toml
-add_newlformat = """
+format = """
 └── $username$hostname $directory$git_branch$git_status$python$nodejs$rust$golang$cmd_duration
 $character"""
 add_newline = true
@@ -184,7 +190,7 @@ truncation_symbol = "…/"
 
 [hostname]
 ssh_only = false
-format = "@"[$hostname]($style)"
+format = "[@$hostname]($style) "
 disabled = false
 
 [git_branch]
@@ -224,6 +230,7 @@ disabled = true
 [battery]
 disabled = true
 EOL
+  fi
   chown -R "$ACTUAL_USER":"$ACTUAL_USER" "$ACTUAL_HOME/.config"
   log_success "Starship prompt installed and configured."
 }
@@ -332,7 +339,7 @@ install_python_poetry() {
   log_success "Poetry installed successfully."
 
   log_info "Installing pynvim for Neovim integration..."
-  "$PYTHON_EXECUTABLE" -m pip install pynvim
+  "$PYTHON_EXECUTABLE" -m pip install pynvim --break-system-packages
   log_success "Python and Poetry setup is complete."
 }
 
@@ -360,7 +367,15 @@ EOL
 
 install_go() {
   log_info "Installing Go v$GO_VERSION..."
-  local go_archive="go$GO_VERSION.linux-amd64.tar.gz"
+  local arch
+  arch=$(uname -m)
+  local go_arch
+  if [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then
+    go_arch="arm64"
+  else
+    go_arch="amd64"
+  fi
+  local go_archive="go$GO_VERSION.linux-$go_arch.tar.gz"
   cd /tmp || return 1
   wget -q "https://dl.google.com/go/$go_archive"
   rm -rf /usr/local/go && tar -xzf "$go_archive" -C /usr/local
@@ -378,7 +393,15 @@ install_neovim_dependencies() {
   log_info "Installing Neovim & LazyVim dependencies (Image support included)..."
   apt install -y lua5.1 liblua5.1-0-dev luajit luarocks trash-cli imagemagick ghostscript
   log_info "--> Installing Tree-sitter CLI v0.22.6 (required by LazyVim)..."
-  curl -L https://github.com/tree-sitter/tree-sitter/releases/download/v0.22.6/tree-sitter-linux-x64.gz -o /tmp/tree-sitter.gz
+  local ts_arch
+  ts_arch=$(uname -m)
+  local ts_binary
+  if [ "$ts_arch" = "aarch64" ] || [ "$ts_arch" = "arm64" ]; then
+    ts_binary="tree-sitter-linux-arm64"
+  else
+    ts_binary="tree-sitter-linux-x64"
+  fi
+  curl -L "https://github.com/tree-sitter/tree-sitter/releases/download/v0.22.6/${ts_binary}.gz" -o /tmp/tree-sitter.gz
   gunzip /tmp/tree-sitter.gz
   mv /tmp/tree-sitter /usr/local/bin/tree-sitter
   chmod +x /usr/local/bin/tree-sitter
@@ -396,13 +419,23 @@ install_neovim() {
   local nvim_dir="$ACTUAL_HOME/.local/nvim"
   mkdir -p "$nvim_dir"
   cd /tmp || return 1
-  curl -L -o nvim-linux64.tar.gz "$NEOVIM_URL"
-  tar xzvf nvim-linux64.tar.gz -C "$nvim_dir" --strip-components 1
+  local arch
+  arch=$(uname -m)
+  local neovim_url
+  if [ "$arch" = "aarch64" ] || [ "$arch" = "arm64" ]; then
+    neovim_url="https://github.com/neovim/neovim/releases/latest/download/nvim-linux-arm64.tar.gz"
+    log_info "--> Detected ARM64 architecture, using ARM64 Neovim build."
+  else
+    neovim_url="https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz"
+    log_info "--> Detected x86_64 architecture, using x86_64 Neovim build."
+  fi
+  curl -L -o nvim-linux.tar.gz "$neovim_url"
+  tar xzvf nvim-linux.tar.gz -C "$nvim_dir" --strip-components 1
   chown -R "$ACTUAL_USER":"$ACTUAL_USER" "$nvim_dir"
   if ! grep -q "alias nvim=" "$ACTUAL_HOME/.zshrc"; then echo "alias nvim='$nvim_dir/bin/nvim'" >>"$ACTUAL_HOME/.zshrc"; fi
   log_info "--> Cloning LazyVim starter configuration..."
   if [ ! -d "$ACTUAL_HOME/.config/nvim" ]; then su - "$ACTUAL_USER" -c "git clone https://github.com/LazyVim/starter ~/.config/nvim"; fi
-  rm -f nvim-linux64.tar.gz
+  rm -f nvim-linux.tar.gz
   log_info "${BOLD}IMPORTANT: On your first run of nvim, please run the following commands to install parsers:"
   log_info "${BOLD}--> :TSInstall bash regex"
   log_success "Neovim and LazyVim installed successfully."
@@ -636,18 +669,11 @@ verify_system() {
     local DESCRIPTION=$1
     local COMMAND_TO_RUN=$2
     printf "${BLUE}%-50s${NC}" "$DESCRIPTION"
-    # Run the command as the actual user where appropriate to check user-specific files
-    if eval "su - $ACTUAL_USER -c '$COMMAND_TO_RUN'" >/dev/null 2>&1; then
+    if HOME="$ACTUAL_HOME" bash -c "$COMMAND_TO_RUN" >/dev/null 2>&1; then
       printf "[ ${GREEN}PASSED${NC} ]\n"
       ((PASSED_CHECKS++))
     else
-      # Fallback for system-level commands that need root
-      if eval "$COMMAND_TO_RUN" >/dev/null 2>&1; then
-        printf "[ ${GREEN}PASSED${NC} ]\n"
-        ((PASSED_CHECKS++))
-      else
-        printf "[ ${RED}FAILED${NC} ]\n"
-      fi
+      printf "[ ${RED}FAILED${NC} ]\n"
     fi
   }
 
@@ -659,10 +685,10 @@ verify_system() {
   check "Zsh is installed" "command -v zsh"
   check "Starship prompt is installed" "command -v starship"
   check "Tmux is installed" "command -v tmux"
-  check "Nerd Fonts directory exists" "'[ -d ~/.local/share/fonts ] && [ -n \"\$(ls -A ~/.local/share/fonts)\" ]'"
-  check "Zsh configuration file exists" "'[ -f ~/.zshrc ]'"
-  check "Starship configuration file exists" "'[ -f ~/.config/starship.toml ]'"
-  check "Tmux configuration file exists" "'[ -f ~/.tmux.conf ]'"
+  check "Nerd Fonts directory exists" "[ -d ~/.local/share/fonts ] && [ -n \"\$(ls -A ~/.local/share/fonts)\" ]"
+  check "Zsh configuration file exists" "[ -f ~/.zshrc ]"
+  check "Starship configuration file exists" "[ -f ~/.config/starship.toml ]"
+  check "Tmux configuration file exists" "[ -f ~/.tmux.conf ]"
 
   echo -e "\n${YELLOW}${BOLD}--- Development Tools ---${NC}"
   check "Git is installed" "command -v git"
@@ -671,24 +697,24 @@ verify_system() {
   check "fzf is installed" "command -v fzf"
   check "ripgrep (rg) is installed" "command -v rg"
   check "fd (fdfind) is installed" "command -v fdfind"
-  check "NVM, node, and npm are available" "'source ~/.nvm/nvm.sh && command -v node && command -v npm'"
-  check "Rust (rustc) is available" "'source ~/.cargo/env && command -v rustc'"
-  check "Go is installed" "command -v go"
+  check "NVM, node, and npm are available" "source ~/.nvm/nvm.sh && command -v node && command -v npm"
+  check "Rust (rustc) is available" "source ~/.cargo/env && command -v rustc"
+  check "Go is installed" "[ -x /usr/local/go/bin/go ]"
   local PY_EXEC
   PY_EXEC=$(command -v python3.13)
   check "Python is installed ($PY_EXEC)" "[ -n \"$PY_EXEC\" ]"
-  check "Poetry is available" "'source ~/.zshrc && command -v poetry'"
+  check "Poetry is available" "source ~/.zshrc && command -v poetry"
   check "Docker service is running" "systemctl is-active --quiet docker"
-  check "Neovim binary exists" "'[ -x ~/.local/nvim/bin/nvim ]'"
-  check "Neovim config (LazyVim) exists" "'[ -d ~/.config/nvim ]'"
+  check "Neovim binary exists" "[ -x ~/.local/nvim/bin/nvim ]"
+  check "Neovim config (LazyVim) exists" "[ -d ~/.config/nvim ]"
 
   echo -e "\n${YELLOW}${BOLD}--- System & Miscellaneous ---${NC}"
   check "rclone is installed" "command -v rclone"
   check "rsync is installed" "command -v rsync"
-  check "DEV directory exists" "'[ -d ~/DEV ]'"
-  check "SSH real-time priority is configured" "'[ -f /etc/systemd/system/ssh.service.d/override.conf ]'"
-  check "Zsh compiler script exists" "'[ -f ~/compile-zsh.sh ]'"
-  check "Setup report exists" "'[ -f ~/setup-report.txt ]'"
+  check "DEV directory exists" "[ -d ~/DEV ]"
+  check "SSH real-time priority is configured" "[ -f /etc/systemd/system/ssh.service.d/override.conf ]"
+  check "Zsh compiler script exists" "[ -f ~/compile-zsh.sh ]"
+  check "Setup report exists" "[ -f ~/setup-report.txt ]"
 
   echo -e "\n${BLUE}${BOLD}--- Verification Summary ---${NC}"
   echo -e "${BOLD}Checks Passed: $PASSED_CHECKS / $TOTAL_CHECKS${NC}\n"
