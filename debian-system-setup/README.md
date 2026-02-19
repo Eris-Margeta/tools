@@ -5,7 +5,7 @@ A robust, idempotent script to automate the setup of a complete and secure devel
 ## USAGE: 
 
 ```bash
-curl -sL https://raw.githubusercontent.com/Eris-Margeta/debian-system-setup/master/system-setup.sh -o setup.sh && chmod +x setup.sh && sudo ./setup.sh
+curl -sL https://raw.githubusercontent.com/Eris-Margeta/tools/main/debian-system-setup/system-setup.sh -o setup.sh && chmod +x setup.sh && sudo ./setup.sh
 ```
 
 ## Philosophy & Design
